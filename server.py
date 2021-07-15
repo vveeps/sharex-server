@@ -59,8 +59,7 @@ async def redirect_to_exact_file(request: Request) -> Response:
 
     name = data["ids"][file_id]
     filename = listdir(f"./files/{name}/{file_id}")[0]
-    url_pre = f"{request.url.scheme}://{request.url.host}"
-    raise HTTPMovedPermanently(f"{url_pre}/{file_id}/{filename}")
+    raise HTTPMovedPermanently(f"https://cdn.veeps.moe/{file_id}/{filename}")
 
 
 @ROUTES.get(r"/{file_path:[a-zA-Z0-9]{6}\/.+\/?}")
