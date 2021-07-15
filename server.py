@@ -1,7 +1,7 @@
 import json
 import re
 from io import BytesIO
-from os import listdir, mkdir, path
+from os import listdir, mkdir
 from random import SystemRandom
 from string import ascii_letters, digits
 
