@@ -17,6 +17,7 @@ from aiohttp.web import (
     Response,
     RouteTableDef
 )
+from PIL import Image, ImageOps
 
 CHARS = ascii_letters + digits
 ROUTES = RouteTableDef()
@@ -41,6 +42,15 @@ def validate_field(name: str, field: BodyPartReader) -> BodyPartReader:
         return field
 
     raise HTTPBadRequest()
+
+
+def save_jpeg_exifless(buffer: bytes, path: str) -> None:
+    original = Image.open(buffer)
+    ImageOps.exif_transpose(original)
+
+    exifless = Image.new(original.mode, original.size)
+    exifless.putdata(list(original.getdata()))
+    exifless.save(path)
 
 
 @ROUTES.get("/")
@@ -122,8 +132,13 @@ async def upload(request: Request) -> Response:
     write_data(data)
 
     mkdir(f"./files/{user}/{file_id}")
-    with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
-        f.write(buffer)
+
+    ext = filename.split(".")[-1]
+    if ext.lower() in ("jpe", "jpeg", "jpg"):
+        save_jpeg_exifless(buffer, f"./files/{user}/{file_id}/{filename}")
+    else:
+        with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
+            f.write(buffer)
 
     return json_response({
         "ext": filename.split(".")[-1],
