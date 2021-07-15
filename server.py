@@ -128,7 +128,7 @@ async def upload(request: Request) -> Response:
 
     return json_response({
         "ext": filename.split(".")[-1],
-        "url": f"https://veeps.moe/{file_id}"
+        "url": f"https://cdn.veeps.moe/{file_id}"
     })
 
 
