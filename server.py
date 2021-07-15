@@ -78,7 +78,8 @@ async def fetch_file(request: Request) -> Response:
             mime_types: dict = json.load(f)
             mime = mime_types.get(ext.lower(), "application/octet-stream")
 
-    user = data["ids"][file_id]
+    if (user := data["ids"].get(file_id)) is None:
+        raise HTTPNotFound()
 
     with open(f"./files/{user}/{file_id}/{filename}", "rb") as f:
         return Response(body=f.read(), content_type=mime)
