@@ -59,7 +59,8 @@ async def redirect_to_exact_file(request: Request) -> Response:
 
     name = data["ids"][file_id]
     filename = listdir(f"./files/{name}/{file_id}")[0]
-    raise HTTPMovedPermanently(f"https://cdn.veeps.moe/{file_id}/{filename}")
+    url_pre = f"{request.url.scheme}://{request.url.host}"
+    raise HTTPMovedPermanently(f"{url_pre}/{file_id}/{filename}")
 
 
 @ROUTES.get(r"/{file_path:[a-zA-Z0-9]{6}\/.+\/?}")
@@ -125,9 +126,11 @@ async def upload(request: Request) -> Response:
     with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
         f.write(buffer)
 
+    url_pre = f"{request.url.scheme}://{request.url.host}"
+
     return json_response({
         "ext": filename.split(".")[-1],
-        "url": f"https://cdn.veeps.moe/{file_id}"
+        "url": f"{url_pre}/{file_id}"
     })
 
 
