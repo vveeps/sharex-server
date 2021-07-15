@@ -126,11 +126,9 @@ async def upload(request: Request) -> Response:
     with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
         f.write(buffer)
 
-    url_pre = f"{request.url.scheme}://{request.url.host}"
-
     return json_response({
         "ext": filename.split(".")[-1],
-        "url": f"{url_pre}/{file_id}"
+        "url": f"https://veeps.moe/{file_id}"
     })
 
 
