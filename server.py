@@ -75,8 +75,8 @@ async def fetch_file(request: Request) -> Response:
         mime = "application/octet-stream"
     else:
         with open("mime.json", "r", encoding="utf-8") as f:
-            mime_types = json.load(f)
-            mime = mime_types.get(ext.lower, "application/octet-stream")
+            mime_types: dict = json.load(f)
+            mime = mime_types.get(ext.lower(), "application/octet-stream")
 
     user = data["ids"][file_id]
 
