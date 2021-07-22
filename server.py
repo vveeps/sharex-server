@@ -1,6 +1,5 @@
 import json
 import re
-from io import BytesIO
 from os import listdir, mkdir
 from random import SystemRandom
 from string import ascii_letters, digits
@@ -22,7 +21,6 @@ from PIL import Image, ImageOps
 CHARS = ascii_letters + digits
 ROUTES = RouteTableDef()
 
-# Regex
 ID_REGEX = re.compile(r"([a-zA-Z0-9]{6})(?:\.+?)?")
 FILE_REGEX = re.compile(r"([a-zA-Z0-9]{6})\/(.+)\.(.+)")
 
@@ -103,7 +101,7 @@ async def upload(request: Request) -> Response:
         raise HTTPForbidden(text="Bad authentication")
 
     reader = await request.multipart()
-    
+
     field = validate_field("filename", await reader.next())
     filename = (await field.read()).decode("utf-8")
 
