@@ -1,5 +1,6 @@
 import json
 import re
+from io import BytesIO
 from os import listdir, mkdir
 from random import SystemRandom
 from string import ascii_letters, digits
@@ -42,7 +43,7 @@ def validate_field(name: str, field: BodyPartReader) -> BodyPartReader:
     raise HTTPBadRequest()
 
 
-def save_jpeg_exifless(buffer: bytes, path: str) -> None:
+def save_jpeg_exifless(buffer: BytesIO, path: str) -> None:
     original = Image.open(buffer)
     ImageOps.exif_transpose(original)
 
@@ -133,7 +134,7 @@ async def upload(request: Request) -> Response:
 
     ext = filename.split(".")[-1]
     if ext.lower() in ("jpe", "jpeg", "jpg"):
-        save_jpeg_exifless(buffer, f"./files/{user}/{file_id}/{filename}")
+        save_jpeg_exifless(BytesIO(buffer), f"./files/{user}/{file_id}/{filename}")
     else:
         with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
             f.write(buffer)
