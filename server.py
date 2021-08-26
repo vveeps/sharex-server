@@ -146,6 +146,6 @@ async def upload(request: Request) -> Response:
     })
 
 
-APP = web.Application()
+APP = web.Application(client_max_size=4294967296)
 APP.add_routes(ROUTES)
 web.run_app(APP, host="localhost", port=9999)
