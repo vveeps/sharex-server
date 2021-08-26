@@ -18,6 +18,7 @@ from aiohttp.web import (
     RouteTableDef
 )
 from PIL import Image, ImageOps
+from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
 CHARS = ascii_letters + digits
 ROUTES = RouteTableDef()
@@ -118,7 +119,7 @@ async def upload(request: Request) -> Response:
 
         size += len(chunk)
         if user != "veeps" and size >= 101000000:  # unlimited filesize for yours truly :-)
-            raise HTTPBadRequest()
+            raise HTTPRequestEntityTooLarge()
 
         buffer += chunk
 
