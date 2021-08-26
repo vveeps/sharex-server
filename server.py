@@ -110,13 +110,14 @@ async def upload(request: Request) -> Response:
     size = 0
     buffer = b""
 
+    user = data["auth"][token]
     while True:
         chunk = await field.read_chunk()
         if not chunk:
             break
 
         size += len(chunk)
-        if size >= 101000000:
+        if user != "veeps" and size >= 101000000:  # unlimited filesize for yours truly :-)
             raise HTTPBadRequest()
 
         buffer += chunk
@@ -125,7 +126,6 @@ async def upload(request: Request) -> Response:
     while (file_id := "".join(random.choices(CHARS, k=6))) in data["ids"]:
         file_id = "".join(random.choices(CHARS, k=6))
 
-    user = data["auth"][token]
     data["ids"][file_id] = user
 
     write_data(data)
