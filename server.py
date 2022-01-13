@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from io import BytesIO
-from os import listdir, mkdir
+from os import listdir, mkdir, path
 from random import SystemRandom
 from typing import Optional
 
@@ -124,5 +124,10 @@ async def fetch_file(file: str):
     if (user := data["ids"].get(file_id)) is None:
         raise NOT_FOUND
 
-    async with aiofiles.open(f"./files/{user}/{file_id}/{filename}", "rb") as f:
+    filepath = f"./files/{user}/{file_id}/{filename}"
+
+    if not path.exists(filepath):
+        raise NOT_FOUND
+
+    async with aiofiles.open(path, "rb") as f:
         return Response(await f.read(), media_type=mime)
