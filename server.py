@@ -95,10 +95,10 @@ async def upload(
     return {"ext": ext, "url": f"https://cdn.veeps.moe/{file_id}"}
 
 
-@APP.get(r"/{file}")
+@APP.get("/{file}")
+@APP.get("/{file:path}")
 async def fetch_file(file: str):
     data = await read_data()
-    print(file)
 
     if re.match(r"[a-zA-Z0-9]{6}(?:\..+)?\/?", file):
         file_id = ID_REGEX.match(file).group(1)
