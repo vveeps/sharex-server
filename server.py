@@ -1,84 +1,117 @@
+import asyncio
 import json
 import re
 from io import BytesIO
 from os import listdir, mkdir
 from random import SystemRandom
-from string import ascii_letters, digits
+from typing import Optional
 
-from aiohttp import BodyPartReader, web
-from aiohttp.web import (
-    HTTPBadRequest,
-    HTTPForbidden,
-    HTTPMovedPermanently,
-    HTTPNotFound,
-    HTTPSeeOther,
-    json_response,
-    Request,
-    Response,
-    RouteTableDef
-)
+import aiofiles
+from fastapi import FastAPI, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi.responses import RedirectResponse
 from PIL import Image, ImageOps
-from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
-CHARS = ascii_letters + digits
-ROUTES = RouteTableDef()
+CHARS = "ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz0123456789-_"
 
 ID_REGEX = re.compile(r"([a-zA-Z0-9]{6})(?:\.+?)?")
 FILE_REGEX = re.compile(r"([a-zA-Z0-9]{6})\/(.+)\.(.+)")
 
-
-def read_data() -> dict:
-    with open("data.json", "r", encoding="utf-8") as f:
-        return json.load(f)
+APP = FastAPI()
+NOT_FOUND = HTTPException(404, "Not Found")
 
 
-def write_data(data: dict) -> None:
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+async def read_data() -> dict[str, dict[str, str]]:
+    async with aiofiles.open("data.json", "r") as f:
+        return json.loads(await f.read())
 
 
-def validate_field(name: str, field: BodyPartReader) -> BodyPartReader:
-    if field.name == name:
-        return field
-
-    raise HTTPBadRequest()
+async def write_data(data: dict[str, dict[str, str]]) -> None:
+    async with aiofiles.open("data.json", "w") as f:
+        await f.write(json.dumps(data))
 
 
-def save_jpeg_exifless(buffer: BytesIO, path: str) -> None:
+def remove_jpeg_exif(buffer: bytes) -> bytes:
     original = Image.open(buffer)
     ImageOps.exif_transpose(original)
 
     exifless = Image.new(original.mode, original.size)
     exifless.putdata(list(original.getdata()))
-    exifless.save(path)
+
+    new_buffer = BytesIO()
+    exifless.save(new_buffer)
+    new_buffer.seek(0)
+
+    return new_buffer.read()
 
 
-@ROUTES.get("/")
-@ROUTES.get(r"/{_:upload\/?}")
-async def index(request: Request) -> Response:
-    raise HTTPSeeOther("https://veeps.moe")
+@APP.get("/", response_class=RedirectResponse)
+@APP.get("/upload", response_class=RedirectResponse)
+async def index():
+    return "https://veeps.moe"
 
 
-@ROUTES.get(r"/{file_id:[a-zA-Z0-9]{6}(?:\..+)?\/?}")
-async def redirect_to_exact_file(request: Request) -> Response:
-    data = read_data()
+@APP.post("/upload")
+async def upload(
+    auth: str,
+    filename: str = Form(...),
+    data: UploadFile = File(...),
+    content_length: Optional[str] = Header(None),
+):
+    file = data
+    data: dict[str, dict[str, str]] = await read_data()
 
-    file_id = ID_REGEX.match(request.match_info['file_id']).group(1)
-    if file_id not in data["ids"]:
-        raise HTTPNotFound()
+    if content_length is None:
+        raise HTTPException(411, "Length Required")
 
-    name = data["ids"][file_id]
-    filename = listdir(f"./files/{name}/{file_id}")[0]
-    raise HTTPMovedPermanently(f"https://cdn.veeps.moe/{file_id}/{filename}")
+    if auth not in data["auth"]:
+        raise HTTPException(403, "Forbidden")
+
+    user = data["auth"][auth]
+
+    if user != "veeps" and int(content_length) >= 101000000:
+        raise HTTPException(413, "Request Entity Too Large")
+
+    random = SystemRandom()
+    while (file_id := "".join(random.choices(CHARS, k=6))) in data["ids"]:
+        file_id = "".join(random.choices(CHARS, k=6))
+
+    data["ids"][file_id] = user
+    await write_data(data)
+
+    mkdir(f"./files/{user}/{file_id}")
+
+    async with aiofiles.open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
+        if (ext := filename.split(".")[-1].lower()) in ("jpe", "jpeg", "jpg"):
+            image = await asyncio.get_running_loop().run_in_executor(
+                None,
+                remove_jpeg_exif,
+                await f.read(),
+            )
+            await f.write(image)
+        else:
+            while chunk := await file.read(134217728):
+                await f.write(chunk)
+
+    return {"ext": ext, "url": f"https://cdn.veeps.moe/{file_id}"}
 
 
-@ROUTES.get(r"/{file_path:[a-zA-Z0-9]{6}\/.+\/?}")
-async def fetch_file(request: Request) -> Response:
-    data = read_data()
+@APP.get(r"/{file}")
+async def fetch_file(file: str):
+    data = await read_data()
 
-    file_path = request.match_info['file_path']
-    file_id, name, ext = FILE_REGEX.match(file_path).groups()
+    if re.match(r"[a-zA-Z0-9]{6}(?:\..+)?\/?", file):
+        file_id = ID_REGEX.match(file).group(1)
+        if file_id not in data["ids"]:
+            raise NOT_FOUND
 
+        name = data["ids"][file_id]
+        filename = listdir(f"./files/{name}/{file_id}")[0]
+        return RedirectResponse(f"https://cdn.veeps.moe/{file_id}/{filename}")
+
+    if (match := FILE_REGEX.match(file)) is None:
+        return NOT_FOUND
+
+    file_id, name, ext = match.groups()
     filename = f"{name}.{ext}"
 
     if ext is None:
@@ -89,63 +122,7 @@ async def fetch_file(request: Request) -> Response:
             mime = mime_types.get(ext.lower(), "application/octet-stream")
 
     if (user := data["ids"].get(file_id)) is None:
-        raise HTTPNotFound()
+        raise NOT_FOUND
 
-    with open(f"./files/{user}/{file_id}/{filename}", "rb") as f:
-        return Response(body=f.read(), content_type=mime)
-
-
-@ROUTES.post(r"/{_:upload\/?}")
-async def upload(request: Request) -> Response:
-    data = read_data()
-
-    if (token := request.query.get("auth")) not in data["auth"]:
-        raise HTTPForbidden(text="Bad authentication")
-
-    reader = await request.multipart()
-
-    field = validate_field("filename", await reader.next())
-    filename = (await field.read()).decode("utf-8")
-
-    field = validate_field("data", await reader.next())
-    size = 0
-    buffer = b""
-
-    user = data["auth"][token]
-    while True:
-        chunk = await field.read_chunk()
-        if not chunk:
-            break
-
-        size += len(chunk)
-        if user != "veeps" and size >= 101000000:  # unlimited filesize for yours truly :-)
-            raise HTTPRequestEntityTooLarge()
-
-        buffer += chunk
-
-    random = SystemRandom()
-    while (file_id := "".join(random.choices(CHARS, k=6))) in data["ids"]:
-        file_id = "".join(random.choices(CHARS, k=6))
-
-    data["ids"][file_id] = user
-
-    write_data(data)
-
-    mkdir(f"./files/{user}/{file_id}")
-
-    ext = filename.split(".")[-1]
-    if ext.lower() in ("jpe", "jpeg", "jpg"):
-        save_jpeg_exifless(BytesIO(buffer), f"./files/{user}/{file_id}/{filename}")
-    else:
-        with open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
-            f.write(buffer)
-
-    return json_response({
-        "ext": filename.split(".")[-1],
-        "url": f"https://cdn.veeps.moe/{file_id}"
-    })
-
-
-APP = web.Application(client_max_size=4294967296)
-APP.add_routes(ROUTES)
-web.run_app(APP, host="localhost", port=9999)
+    async with aiofiles.open(f"./files/{user}/{file_id}/{filename}", "rb") as f:
+        return Response(await f.read(), media_type=mime)
