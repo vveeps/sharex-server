@@ -98,9 +98,8 @@ async def upload(
 @APP.get("/{file:path}")
 async def fetch_file(file: str):
     data = await read_data()
-    return file
 
-    if re.match(r"[a-zA-Z0-9]{6}(?:\..+)?\/?", file):
+    if re.fullmatch(r"[a-zA-Z0-9]{6}(?:\..+)?\/?", file):
         file_id = ID_REGEX.match(file).group(1)
         if file_id not in data["ids"]:
             raise NOT_FOUND
