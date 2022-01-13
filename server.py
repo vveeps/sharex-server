@@ -109,7 +109,7 @@ async def fetch_file(file: str):
         return RedirectResponse(f"https://cdn.veeps.moe/{file_id}/{filename}")
 
     if (match := FILE_REGEX.match(file)) is None:
-        return NOT_FOUND
+        return file
 
     file_id, name, ext = match.groups()
     filename = f"{name}.{ext}"
