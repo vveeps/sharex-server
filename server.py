@@ -129,5 +129,5 @@ async def fetch_file(file: str):
     if not path.exists(filepath):
         raise NOT_FOUND
 
-    async with aiofiles.open(path, "rb") as f:
+    async with aiofiles.open(filepath, "rb") as f:
         return Response(await f.read(), media_type=mime)
