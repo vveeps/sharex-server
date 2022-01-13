@@ -106,7 +106,7 @@ async def fetch_file(file: str):
 
         name = data["ids"][file_id]
         filename = listdir(f"./files/{name}/{file_id}")[0]
-        return RedirectResponse(f"https://cdn.veeps.moe/{file_id}/{filename}")
+        return RedirectResponse(f"https://cdn.veeps.moe/{file_id}/{filename}", 301)
 
     if (match := FILE_REGEX.match(file)) is None:
         raise NOT_FOUND
