@@ -95,7 +95,6 @@ async def upload(
     return {"ext": ext, "url": f"https://cdn.veeps.moe/{file_id}"}
 
 
-@APP.get("/{file}")
 @APP.get("/{file:path}")
 async def fetch_file(file: str):
     data = await read_data()
