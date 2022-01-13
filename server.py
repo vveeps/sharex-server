@@ -112,6 +112,7 @@ async def fetch_file(file: str):
         return file
 
     file_id, name, ext = match.groups()
+    print(file_id, name, ext)
     filename = f"{name}.{ext}"
 
     if ext is None:
