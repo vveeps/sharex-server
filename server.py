@@ -13,8 +13,8 @@ from PIL import Image, ImageOps
 
 CHARS = "ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz0123456789-_"
 
-ID_REGEX = re.compile(r"([a-zA-Z0-9]{6})(?:\.+?)?")
-FILE_REGEX = re.compile(r"([a-zA-Z0-9]{6})\/(.+)\.(.+)")
+ID_REGEX = re.compile(r"([a-zA-Z0-9\-\_]{6})(?:\.+?)?")
+FILE_REGEX = re.compile(r"([a-zA-Z0-9\-\_]{6})\/(.+)\.(.+)")
 
 APP = FastAPI()
 NOT_FOUND = HTTPException(404, "Not Found")
