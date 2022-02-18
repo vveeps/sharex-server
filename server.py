@@ -39,7 +39,7 @@ def remove_jpeg_exif(image: bytes) -> bytes:
     exifless.putdata(list(original.getdata()))
 
     new_buffer = BytesIO()
-    exifless.save(new_buffer, format="jpg")
+    exifless.save(new_buffer, format="jpeg")
     new_buffer.seek(0)
 
     return new_buffer.read()
