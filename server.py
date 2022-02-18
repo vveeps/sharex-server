@@ -30,11 +30,12 @@ async def write_data(data: dict[str, dict[str, str]]) -> None:
         await f.write(json.dumps(data))
 
 
-def remove_jpeg_exif(buffer: bytes) -> bytes:
+def remove_jpeg_exif(image: bytes) -> bytes:
+    buffer = BytesIO(image)
     original = Image.open(buffer)
     ImageOps.exif_transpose(original)
 
-    exifless = Image.new(original.mode, original.size)
+    exifless = Image.new(original.mode, original.size)  # type: ignore
     exifless.putdata(list(original.getdata()))
 
     new_buffer = BytesIO()
@@ -57,26 +58,25 @@ async def upload(
     data: UploadFile = File(...),
     content_length: Optional[str] = Header(None),
 ):
-    file = data
-    data: dict[str, dict[str, str]] = await read_data()
+    _data: dict[str, dict[str, str]] = await read_data()
 
     if content_length is None:
         raise HTTPException(411, "Length Required")
 
-    if auth not in data["auth"]:
+    if auth not in _data["auth"]:
         raise HTTPException(403, "Forbidden")
 
-    user = data["auth"][auth]
+    user = _data["auth"][auth]
 
     if user != "veeps" and int(content_length) >= 101000000:
         raise HTTPException(413, "Request Entity Too Large")
 
     random = SystemRandom()
-    while (file_id := "".join(random.choices(CHARS, k=6))) in data["ids"]:
+    while (file_id := "".join(random.choices(CHARS, k=6))) in _data["ids"]:
         file_id = "".join(random.choices(CHARS, k=6))
 
-    data["ids"][file_id] = user
-    await write_data(data)
+    _data["ids"][file_id] = user
+    await write_data(_data)
 
     mkdir(f"./files/{user}/{file_id}")
 
@@ -85,11 +85,13 @@ async def upload(
             image = await asyncio.get_running_loop().run_in_executor(
                 None,
                 remove_jpeg_exif,
-                await f.read(),
+                await data.read(),
             )
             await f.write(image)
         else:
-            while chunk := await file.read(134217728):
+            while chunk := await data.read(134217728):
+                if isinstance(chunk, str):
+                    chunk = chunk.encode("utf-8")
                 await f.write(chunk)
 
     return {"ext": ext, "url": f"https://cdn.veeps.moe/{file_id}"}
@@ -100,7 +102,9 @@ async def fetch_file(file: str):
     data = await read_data()
 
     if re.fullmatch(r"[a-zA-Z0-9\-_]{6}(?:\..+)?\/?", file):
-        file_id = ID_REGEX.match(file).group(1)
+        assert (file_id := ID_REGEX.match(file)) is not None
+        file_id = file_id.group(1)
+
         if file_id not in data["ids"]:
             raise NOT_FOUND
 
