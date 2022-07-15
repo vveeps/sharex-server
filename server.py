@@ -143,4 +143,4 @@ async def fetch_file(file: str):
             while chunk := await f.read(chunk_size):
                 yield chunk
 
-    return StreamingResponse(iter_file(filepath, chunk_size=64 * KILOBYTE), media_type=mime)
+    return StreamingResponse(iter_file(filepath, chunk_size=256 * KILOBYTE), media_type=mime)
