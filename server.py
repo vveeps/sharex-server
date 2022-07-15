@@ -9,7 +9,7 @@ from typing import Optional
 import aiofiles
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
-from starlette.responses import StreamingResponse
+from starlette.responses import FileResponse
 from PIL import Image, ImageOps
 
 CHARS = "ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz0123456789-_"
@@ -135,5 +135,4 @@ async def fetch_file(file: str):
     if not path.exists(filepath):
         raise NOT_FOUND
 
-    async with aiofiles.open(filepath, "rb") as f:
-        return StreamingResponse(f, media_type=mime)
+    return FileResponse(filepath, media_type=mime)
