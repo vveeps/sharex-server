@@ -20,6 +20,9 @@ FILE_REGEX = re.compile(r"([a-zA-Z0-9\-_]{6})\/(.+)\.(.+)")
 APP = FastAPI()
 NOT_FOUND = HTTPException(404, "Not Found")
 
+KILOBYTE = 1024
+MEGABYTE = 1_048_576
+
 
 async def read_data() -> dict[str, dict[str, str]]:
     async with aiofiles.open("data.json", "r") as f:
@@ -140,4 +143,4 @@ async def fetch_file(file: str):
             while chunk := await f.read(chunk_size):
                 yield chunk
 
-    return StreamingResponse(iter_file(filepath, chunk_size=1_048_576), media_type=mime)
+    return StreamingResponse(iter_file(filepath, chunk_size=10 * MEGABYTE), media_type=mime)
