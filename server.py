@@ -137,6 +137,6 @@ async def fetch_file(file: str):
 
     async def iter_file(path, *, chunk_size: int = 1_048_576):
         async with aiofiles.open(path, "rb") as f:
-            yield f.read(chunk_size)
+            yield await f.read(chunk_size)
 
     return StreamingResponse(iter_file(filepath), media_type=mime)
