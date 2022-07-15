@@ -9,7 +9,7 @@ from typing import Optional
 import aiofiles
 from baize.asgi.responses import FileResponse
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from PIL import Image, ImageOps
 
 CHARS = "ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz0123456789-_"
@@ -135,4 +135,8 @@ async def fetch_file(file: str):
     if not path.exists(filepath):
         raise NOT_FOUND
 
-    return FileResponse(filepath, chunk_size=1_048_576, content_type=mime)
+    async def iter_file(path, *, chunk_size: int = 1_048_576):
+        async with aiofiles.open(path, "rb") as f:
+            yield f.read(chunk_size)
+
+    return StreamingResponse(iter_file(filepath), media_type=mime)
