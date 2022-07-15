@@ -7,8 +7,9 @@ from random import SystemRandom
 from typing import Optional
 
 import aiofiles
-from fastapi import FastAPI, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
+from starlette.responses import StreamingResponse
 from PIL import Image, ImageOps
 
 CHARS = "ABCDEFGHIJKLMOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz0123456789-_"
@@ -80,8 +81,9 @@ async def upload(
 
     mkdir(f"./files/{user}/{file_id}")
 
+    ext = filename.split(".")[-1].lower()
     async with aiofiles.open(f"./files/{user}/{file_id}/{filename}", "wb") as f:
-        if (ext := filename.split(".")[-1].lower()) in ("jpe", "jpeg", "jpg"):
+        if ext in ("jpe", "jpeg", "jpg"):
             image = await asyncio.get_running_loop().run_in_executor(
                 None,
                 remove_jpeg_exif,
@@ -134,4 +136,4 @@ async def fetch_file(file: str):
         raise NOT_FOUND
 
     async with aiofiles.open(filepath, "rb") as f:
-        return Response(await f.read(), media_type=mime)
+        return StreamingResponse(f, media_type=mime)
