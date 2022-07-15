@@ -135,8 +135,9 @@ async def fetch_file(file: str):
     if not path.exists(filepath):
         raise NOT_FOUND
 
-    async def iter_file(path, *, chunk_size: int = 1_048_576):
+    async def iter_file(path, *, chunk_size: int):
         async with aiofiles.open(path, "rb") as f:
-            yield await f.read(chunk_size)
+            while chunk := await f.read(chunk_size):
+                yield chunk
 
-    return StreamingResponse(iter_file(filepath), media_type=mime)
+    return StreamingResponse(iter_file(filepath, chunk_size=1_048_576), media_type=mime)
